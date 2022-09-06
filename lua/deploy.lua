@@ -1,3 +1,7 @@
+local vim = vim
+
+local M = {}
+
 Path = vim.fn.expand('%:h')
 ConfigFileName = string.format("%s/deploy.json", Path)
 
@@ -96,5 +100,11 @@ function CreateConfiguration() end
 
 function EditConfiguration() end
 
-vim.api.nvim_create_user_command('RUploadFile', UploadFile,
-    { bang = true, desc = 'Upload Current File To Remote Server' })
+
+M.setup = function (config)
+    vim.api.nvim_create_user_command('RUploadFile', UploadFile,
+        { bang = true, desc = 'Upload Current File To Remote Server' })
+end
+
+return M;
+
