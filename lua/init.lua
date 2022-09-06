@@ -102,8 +102,7 @@ function EditConfiguration() end
 
 
 M.setup = function (config)
-    vim.api.nvim_create_user_command('RUploadFile', UploadFile,
-        { bang = true, desc = 'Upload Current File To Remote Server' })
+    vim.cmd("command! RemoreUploadFile lua UploadFile()")
 end
 
 return M;
