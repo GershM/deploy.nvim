@@ -102,7 +102,14 @@ function EditConfiguration() end
 
 
 M.setup = function (config)
-    vim.cmd("command! RemoreUploadFile lua UploadFile()")
+    vim.cmd("command! DRemoteUploadFile lua UploadFile()")
+    vim.cmd("command! DRemoteDownloadFile lua DownloadFile()")
+    vim.cmd("command! DRemoteUploadFolder lua UploadFolder()")
+    vim.cmd("command! DRemoteDownloadFolder lua DownloadFolder()")
+    vim.cmd("command! DRemoteUploadProject lua UploadProject()")
+    vim.cmd("command! DRemoteDownloadProject lua DownloadProject()")
+    vim.cmd("command! DCreateConfiguration lua CreateConfiguration()")
+    vim.cmd("command! DEditConfiguration lua EditConfiguration()")
 end
 
 return M;
