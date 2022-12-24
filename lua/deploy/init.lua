@@ -9,6 +9,7 @@ ConfigFilePath = string.format("%s/%s", WorkingDirPath, ConfigFileName)
 
 local function DeploymentLogs(log, path)
     -- print(string.format("[%s] %s %s\n", os.date(), log, path))
+    --   vim.fn.log(string.format("[%s] %s %s\n", os.date(), log, path))
 end
 
 local function ParseConfiguration()
@@ -44,7 +45,7 @@ local function buildExclude(conf, type)
     local exclude = ""
     local ptx = "[ptx]"
     if conf.ignore ~= nil then
-        for _, v in conf.ignore do
+        for _, v in ipairs(conf.ignore) do
             local ex = type:gsub(ptx, v)
             exclude = string.format("%s %s", exclude, ex)
         end
@@ -52,77 +53,24 @@ local function buildExclude(conf, type)
     return exclude
 end
 
-local function GetMethodARGS(method, conf)
-    local args = ""
-    local exclude = ""
-    if method == "scp"
-    then
-        exclude = buildExclude(conf, "!([ptx])")
-        args = string.format("-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -rC %s", exclude)
-    elseif method == "rsync" then
-        exclude = buildExclude(conf, "--exclude=[ptx]")
-        args = string.format("-a -e ssh %s", exclude)
-    end
+local function GetMethodARGS(conf)
+    local exclude = buildExclude(conf, "--exclude=[ptx]")
+    local args = string.format(" -av --no-o --no-g %s", exclude)
     return args
 end
 
-local function methodExists(method)
-    local cmd = os.execute(string.format("which %s", method))
-    return cmd == 0
-end
-
-local function GetMethod(conf)
-    local method = ""
-    local count = 2
-    local missingMethod = false
-
-    if conf.method == nil then
-        conf.method = "scp"
-    end
-
-    while count >= 0 do
-        if ((conf.method == "scp" or missingMethod) and methodExists("scp"))
-        then
-            method = "scp"
-            break
-        elseif ((conf.method == "rsync" or missingMethod) and methodExists("rsync"))
-        then
-            method = "rsync"
-            break
-        end
-        missingMethod = true
-        count = count - 1
-    end
-    if method == "" then
-        return
-    elseif conf.method ~= method and missingMethod
-    then
-        print(string.format("The %s application doesn't exists, Using %s instead", conf.method, method))
-    end
-
-    return method
-end
-
 local function DeployDownload(conf, sourcePath, destinationPath)
-    if sourcePath ~= nil and destinationPath ~= nil
-    then
-        local method = GetMethod(conf)
-        if method == nil
-        then
-            print("Failed to find the method's application")
-            return
-        end
-
-        local args = GetMethodARGS(method, conf)
-        local command = string.format("%s %s %s %s", method, args, sourcePath, destinationPath)
-        vim.api.nvim_command("! "..command)
+    if sourcePath ~= nil and destinationPath ~= nil then
+        local method = "rsync"
+        local args = GetMethodARGS(conf)
+        local command = string.format("!%s %s %s %s", method, args, sourcePath, destinationPath)
+        vim.api.nvim_command(command)
     end
 end
 
 local function DeployByProtocolToRemote(path)
     local conf = GetUsedConf()
-    if conf ~= nil
-    then
+    if conf ~= nil then
         DeploymentLogs("[Local -> Remote]: ", path)
         local destinationPath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, path)
         local sourcePath = string.format("%s/%s", conf.localRootPath, path)
@@ -132,8 +80,7 @@ end
 
 local function DownloadByProtocolFromRemote(path)
     local conf = GetUsedConf()
-    if conf ~= nil
-    then
+    if conf ~= nil then
         DeploymentLogs("[Remote -> Local]: ", path)
         local sourcePath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, path)
         local destinationPath = string.format("%s/%s", conf.localRootPath, path)
@@ -172,18 +119,17 @@ function DownloadProject()
 end
 
 function CreateConfiguration()
-    print(WorkingDirPath)
     local f = io.open(ConfigFilePath, "w+")
+
     if f ~= nil then
-        local json = {
+        local json = [[
+        [
             {
                 name = "Connection Name",
-                method = "scp",
                 ipAddress = "Host/IP Address",
                 username = "Login User",
                 password = "User's password",
                 sshKey = "SSH Key Path",
-                localRootPath = "",
                 remoteRootPath = "",
                 isDefault = true,
                 uploadOnSave = false,
@@ -193,18 +139,16 @@ function CreateConfiguration()
                     "**/vendeor/**",
                     "**/.vsCode/**",
                     "**/.idea/**",
-                    string.format("**/%s", ConfigFileName),
                 }
             },
-        }
-        local jsonString = vim.fn.json_encode(json)
+        ]
+        ]]
         io.output(f)
-        io.write(jsonString)
+        io.write(json)
         io.close(f)
         vim.cmd(string.format("e %s", ConfigFilePath))
     else
         print("Failed to Create Configuration File\n")
-
         print(io.open(ConfigFilePath, "w"))
     end
 
@@ -212,7 +156,6 @@ end
 
 function EditConfiguration()
     local f = io.open(ConfigFilePath, "r")
-    print(io.open(ConfigFilePath, "r"))
     if f ~= nil then
         vim.cmd(string.format("e %s", ConfigFilePath))
     else
@@ -221,21 +164,37 @@ function EditConfiguration()
 end
 
 M.setup = function(config)
+    if config == nil then
+        config = GetUsedConf()
+    end
+
     if config ~= nil then
         if config.filename ~= nil then
             ConfigFileName = config.filename
         end
+
+        if config.uploadOnSave == true then
+            vim.api.nvim_create_autocmd("BufWritePre", {
+                pattern = "*",
+                callback = function()
+                    UploadFile()
+                    -- vim.schedule(CodeRunner)
+                end,
+            })
+            -- vim.cmd("autocmd BufWritePre lua UploadFile()")
+        end
     end
 
-    vim.cmd("command! UploadFile lua UploadFile()")
+    vim.cmd("command! CreateDeploymentConfig lua CreateConfiguration()")
+    -- vim.cmd("command! DEditConfiguration lua EditConfiguration()")
+
     vim.cmd("command! DownloadFile lua DownloadFile()")
+    vim.cmd("command! UploadFile lua UploadFile()")
 
     -- vim.cmd("command! DRemoteUploadFolder lua UploadFolder()")
     -- vim.cmd("command! DRemoteDownloadFolder lua DownloadFolder()")
     -- vim.cmd("command! DRemoteUploadProject lua UploadProject()")
     -- vim.cmd("command! DRemoteDownloadProject lua DownloadProject()")
-    -- vim.cmd("command! DCreateConfiguration lua CreateConfiguration()")
-    -- vim.cmd("command! DEditConfiguration lua EditConfiguration()")
 end
 
 return M;
