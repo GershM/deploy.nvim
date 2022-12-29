@@ -1,8 +1,8 @@
 <h1 align="center">(Neo)vim remote deployment Plugin</h1>
 
 # Info
-- This is Plugin for nvim to upload local project to remote server.
-- curenly, only rsync upload is suported.
+- This is Plugin for nvim to upload the local projects to the remote server.
+- currently, only rsync upload is supported.
 
 1. [Installation](#installation)
 1. [Basic usage](#basic-usage)
@@ -13,10 +13,10 @@
 ```lua
 use { "GershM/deploy.nvim" }
 ```
-- make sure you have installed rsync application
+- Make sure rsync is installed.
 
 ## Basic usage
-- Create 'deploy.json' file at the project's root folder or use ``CreateDeploymentConfig`` command.
+- Create 'deploy.json' file at the project's root folder or use the ``CreateDeploymentConfig`` command.
 - Deployment config file(deploy,json) example:
 ```json
 [
@@ -41,9 +41,9 @@ use { "GershM/deploy.nvim" }
 ```
 
 ## Commands
-- ``CreateDeploymentConfig``: Creating basic configuration
-- ``EditConfiguration``: Open the configuration file
-- ``DownloadFile``: Download File from remote server
-- ``UploadFile``: Upload File to a remote server
-- ``SyncRemoteProject``: Uploading the project to remote server
+- ``CreateDeploymentConfig``: Creating basic configuration.
+- ``EditConfiguration``: Open the configuration file.
+- ``DownloadFile``: Download File from remote server.
+- ``UploadFile``: Upload File to a remote server.
+- ``SyncRemoteProject``: Uploading the project to remote server.
 
