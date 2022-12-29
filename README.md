@@ -1,6 +1,7 @@
 <h1 align="center">(Neo)vim remote deployment Plugin</h1>
 # deploy.nvim
-This is Plugin for nvim to upload local project to remote server
+This is Plugin for nvim to upload local project to remote server.
+
 1. [Installation](#installation)
 1. [Basic usage](#basic-usage)
 1. [Commands](#commands)
