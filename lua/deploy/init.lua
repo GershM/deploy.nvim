@@ -7,6 +7,43 @@ WorkingDirPath = vim.fn.getcwd()
 ConfigFileName = "deploy.json"
 ConfigFilePath = string.format("%s/%s", WorkingDirPath, ConfigFileName)
 
+local function enable_on_save()
+    vim.api.nvim_create_augroup("upload_on_save", {})
+    vim.api.nvim_create_autocmd("BufWritePre", {
+        group = "upload_on_save",
+        pattern = '*',
+        callback = function()
+            UploadFile()
+        end,
+    })
+end
+
+local function clear_augroup(name)
+    vim.schedule(function()
+        pcall(function()
+            vim.api.nvim_clear_autocmds { group = name }
+        end)
+    end)
+end
+
+local function disable_on_save()
+    clear_augroup "upload_on_save"
+end
+
+local function toggle_upload_on_save(enable)
+    local exists, autocmds = pcall(vim.api.nvim_get_autocmds, {
+        group = "upload_on_save",
+        event = "BufWritePre",
+    })
+    if enable then
+        if not exists or #autocmds == 0 then
+            enable_on_save()
+        end
+    else
+        disable_on_save()
+    end
+end
+
 local function ParseConfiguration()
     local f = io.open(ConfigFilePath, "r")
     if f ~= nil
@@ -39,8 +76,8 @@ end
 local function ignoreList(conf, type)
     local exclude = ""
     if conf.ignore ~= nil then
-        for _,v in ipairs(conf.ignore) do
-            local ex = string.format("%s%s \"%s\" " ,exclude, type, v)
+        for _, v in ipairs(conf.ignore) do
+            local ex = string.format("%s%s \"%s\" ", exclude, type, v)
             exclude = ex
         end
     end
@@ -54,6 +91,8 @@ local function GetMethodARGS(conf)
 end
 
 local function DeployDownload(conf, sourcePath, destinationPath)
+
+    toggle_upload_on_save(conf.uploadOnSave)
     if sourcePath ~= nil and destinationPath ~= nil then
         local method = "rsync"
         local args = GetMethodARGS(conf)
@@ -138,15 +177,6 @@ function EditConfiguration()
     end
 end
 
-local function autoUpload()
-    vim.api.nvim_create_autocmd("BufWritePre", {
-        pattern = "*",
-        callback = function()
-            UploadFile()
-        end,
-    })
-end
-
 M.setup = function(config)
     if config == nil then
         config = GetUsedConf()
@@ -157,9 +187,7 @@ M.setup = function(config)
             ConfigFileName = config.filename
         end
 
-        if config.uploadOnSave == true then
-            autoUpload()
-        end
+        toggle_upload_on_save(config.uploadOnSave)
     end
 
     vim.cmd("command! CreateDeploymentConfig lua CreateConfiguration()")
