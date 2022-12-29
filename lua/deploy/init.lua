@@ -7,11 +7,6 @@ WorkingDirPath = vim.fn.getcwd()
 ConfigFileName = "deploy.json"
 ConfigFilePath = string.format("%s/%s", WorkingDirPath, ConfigFileName)
 
-local function DeploymentLogs(log, path)
-    -- print(string.format("[%s] %s %s\n", os.date(), log, path))
-    --   vim.fn.log(string.format("[%s] %s %s\n", os.date(), log, path))
-end
-
 local function ParseConfiguration()
     local f = io.open(ConfigFilePath, "r")
     if f ~= nil
@@ -41,21 +36,20 @@ local function GetUsedConf()
     end
 end
 
-local function buildExclude(conf, type)
+local function ignoreList(conf, type)
     local exclude = ""
-    local ptx = "[ptx]"
     if conf.ignore ~= nil then
-        for _, v in ipairs(conf.ignore) do
-            local ex = type:gsub(ptx, v)
-            exclude = string.format("%s %s", exclude, ex)
+        for _,v in ipairs(conf.ignore) do
+            local ex = string.format("%s%s \"%s\" " ,exclude, type, v)
+            exclude = ex
         end
     end
     return exclude
 end
 
 local function GetMethodARGS(conf)
-    local exclude = buildExclude(conf, "--exclude=[ptx]")
-    local args = string.format(" -av --no-o --no-g %s", exclude)
+    local exclude = ignoreList(conf, "--exclude")
+    local args = string.format(" -a -z --no-o --no-g -r %s", exclude)
     return args
 end
 
@@ -71,20 +65,16 @@ end
 local function DeployByProtocolToRemote(path)
     local conf = GetUsedConf()
     if conf ~= nil then
-        DeploymentLogs("[Local -> Remote]: ", path)
         local destinationPath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, path)
-        local sourcePath = string.format("%s/%s", conf.localRootPath, path)
-        DeployDownload(conf, sourcePath, destinationPath)
+        DeployDownload(conf, path, destinationPath)
     end
 end
 
 local function DownloadByProtocolFromRemote(path)
     local conf = GetUsedConf()
     if conf ~= nil then
-        DeploymentLogs("[Remote -> Local]: ", path)
         local sourcePath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, path)
-        local destinationPath = string.format("%s/%s", conf.localRootPath, path)
-        DeployDownload(conf, sourcePath, destinationPath)
+        DeployDownload(conf, sourcePath, path)
     end
 end
 
@@ -98,24 +88,9 @@ function DownloadFile()
     DownloadByProtocolFromRemote(path)
 end
 
-function UploadFolder()
-    local path = vim.fn.expand('%:p:.:h')
-    DeployByProtocolToRemote(path)
-end
-
-function DownloadFolder()
-    local path = vim.fn.expand('%:p:.:h')
-    DownloadByProtocolFromRemote(path)
-end
-
-function UploadProject()
+function SyncRemoteProject()
     local path = ""
     DeployByProtocolToRemote(path)
-end
-
-function DownloadProject()
-    local path = ""
-    DownloadByProtocolFromRemote(path)
 end
 
 function CreateConfiguration()
@@ -129,18 +104,18 @@ function CreateConfiguration()
                 ipAddress = "Host/IP Address",
                 username = "Login User",
                 password = "User's password",
-                sshKey = "SSH Key Path",
                 remoteRootPath = "",
                 isDefault = true,
                 uploadOnSave = false,
                 ignore = {
-                    "**/.git/**",
-                    "**/node_modules/**",
-                    "**/vendeor/**",
-                    "**/.vsCode/**",
-                    "**/.idea/**",
+                    ".git",
+                    "node_modules",
+                    "vendeor",
+                    ".vsCode",
+                    ".idea",
+                    "deploy.json"
                 }
-            },
+            }
         ]
         ]]
         io.output(f)
@@ -163,6 +138,15 @@ function EditConfiguration()
     end
 end
 
+local function autoUpload()
+    vim.api.nvim_create_autocmd("BufWritePre", {
+        pattern = "*",
+        callback = function()
+            UploadFile()
+        end,
+    })
+end
+
 M.setup = function(config)
     if config == nil then
         config = GetUsedConf()
@@ -174,27 +158,17 @@ M.setup = function(config)
         end
 
         if config.uploadOnSave == true then
-            vim.api.nvim_create_autocmd("BufWritePre", {
-                pattern = "*",
-                callback = function()
-                    UploadFile()
-                    -- vim.schedule(CodeRunner)
-                end,
-            })
-            -- vim.cmd("autocmd BufWritePre lua UploadFile()")
+            autoUpload()
         end
     end
 
     vim.cmd("command! CreateDeploymentConfig lua CreateConfiguration()")
-    -- vim.cmd("command! DEditConfiguration lua EditConfiguration()")
+    vim.cmd("command! EditConfiguration lua EditConfiguration()")
 
     vim.cmd("command! DownloadFile lua DownloadFile()")
     vim.cmd("command! UploadFile lua UploadFile()")
 
-    -- vim.cmd("command! DRemoteUploadFolder lua UploadFolder()")
-    -- vim.cmd("command! DRemoteDownloadFolder lua DownloadFolder()")
-    -- vim.cmd("command! DRemoteUploadProject lua UploadProject()")
-    -- vim.cmd("command! DRemoteDownloadProject lua DownloadProject()")
+    vim.cmd("command! SyncRemoteProject lua SyncRemoteProject()")
 end
 
 return M;
