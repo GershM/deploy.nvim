@@ -125,8 +125,7 @@ function ExecuteFile()
     local path = vim.fn.expand('%:p:.')
     local conf = GetUsedConf()
     if conf ~= nil then
-        local execPath = string.format("%s@%s \"%s %s/%s\"", conf.username, conf.ipAddress, conf.binary, conf.remoteRootPath, path)
-        local command = string.format("ssh %s", execPath )
+        local command = string.format("!ssh %s@%s \"%s %s/%s\"", conf.username, conf.ipAddress, conf.binary, conf.remoteRootPath, path)
         vim.api.nvim_command(command)
     end
 end
