@@ -91,7 +91,6 @@ local function GetMethodARGS(conf)
 end
 
 local function DeployDownload(conf, sourcePath, destinationPath)
-
     toggle_upload_on_save(conf.uploadOnSave)
     if sourcePath ~= nil and destinationPath ~= nil then
         local method = "rsync"
@@ -122,6 +121,16 @@ function UploadFile()
     DeployByProtocolToRemote(path)
 end
 
+function ExecuteFile()
+    local path = vim.fn.expand('%:p:.')
+    local conf = GetUsedConf()
+    if conf ~= nil then
+        local execPath = string.format("%s@%s \"%s %s/%s\"", conf.username, conf.ipAddress, conf.binary, conf.remoteRootPath, path)
+        local command = string.format("ssh %s", execPath )
+        vim.api.nvim_command(command)
+    end
+end
+
 function DownloadFile()
     local path = vim.fn.expand('%:p:.')
     DownloadByProtocolFromRemote(path)
@@ -144,6 +153,7 @@ function CreateConfiguration()
                 username = "Login User",
                 password = "User's password",
                 remoteRootPath = "",
+                binary = "",
                 isDefault = true,
                 uploadOnSave = false,
                 ignore = {
@@ -192,11 +202,10 @@ M.setup = function(config)
 
     vim.cmd("command! CreateDeploymentConfig lua CreateConfiguration()")
     vim.cmd("command! EditConfiguration lua EditConfiguration()")
-
     vim.cmd("command! DownloadFile lua DownloadFile()")
     vim.cmd("command! UploadFile lua UploadFile()")
-
     vim.cmd("command! SyncRemoteProject lua SyncRemoteProject()")
+    vim.cmd("command! ExecuteRemoteFile lua ExecuteFile()")
 end
 
 return M;
