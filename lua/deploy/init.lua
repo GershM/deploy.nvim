@@ -7,6 +7,14 @@ WorkingDirPath = vim.fn.getcwd()
 ConfigFileName = "deploy.json"
 ConfigFilePath = string.format("%s/%s", WorkingDirPath, ConfigFileName)
 
+local function exec(command)
+    local ok, data = pcall(vim.api.nvim_command, command)
+    if not ok then
+        error("Faild to Ececute Command ", command )
+        return {}
+    end
+end
+
 local function enable_on_save()
     vim.api.nvim_create_augroup("upload_on_save", {})
     vim.api.nvim_create_autocmd("BufWritePre", {
@@ -96,7 +104,7 @@ local function DeployDownload(conf, sourcePath, destinationPath)
         local method = "rsync"
         local args = GetMethodARGS(conf)
         local command = string.format("!%s %s %s %s", method, args, sourcePath, destinationPath)
-        vim.api.nvim_command(command)
+        exec(command)
     end
 end
 
@@ -125,8 +133,9 @@ function ExecuteFile()
     local path = vim.fn.expand('%:p:.')
     local conf = GetUsedConf()
     if conf ~= nil then
-        local command = string.format("!ssh %s@%s \"%s %s/%s\"", conf.username, conf.ipAddress, conf.binary, conf.remoteRootPath, path)
-        vim.api.nvim_command(command)
+        local command = string.format("!ssh %s@%s \"%s %s/%s\"", conf.username, conf.ipAddress, conf.binary,
+            conf.remoteRootPath, path)
+        exec(command)
     end
 end
 
