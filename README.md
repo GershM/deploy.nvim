@@ -17,7 +17,7 @@ use { 'GershM/deploy.nvim', setup = require("deploy").setup() }
 
 ## Basic usage
 - Create 'deploy.json' file at the project's root folder or use the ``CreateDeploymentConfig`` command.
-- Deployment config file(deploy,json) example:
+- Deployment config file(deploy.json) example:
 ```json
 [
     {
@@ -27,7 +27,7 @@ use { 'GershM/deploy.nvim', setup = require("deploy").setup() }
        "password": "User's password",
        "remoteRootPath": "",
        "isDefault": true,
-       "uploadOnSave": false,
+       "binary": "",
        "ignore": [
             ".git",
             "node_modules",
@@ -46,4 +46,5 @@ use { 'GershM/deploy.nvim', setup = require("deploy").setup() }
 - ``DownloadFile``: Download File from remote server.
 - ``UploadFile``: Upload File to a remote server.
 - ``SyncRemoteProject``: Uploading the project to remote server.
+- ``ExecuteRemoteFile``: Allow to execute files in Remote server useing ssh (the binary can be configured in the configuration file)
 
