@@ -16,8 +16,8 @@ function M.DownloadFile()
 end
 
 function M.SyncRemoteProject()
-    local path = ""
-    utils.DeployByProtocolToRemote(path)
+    local path = "./"
+    utils.DeployByProtocolToRemote(path, "")
 end
 
 function M.CreateConfiguration()

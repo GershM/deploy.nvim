@@ -87,7 +87,7 @@ end
 
 local function GetMethodARGS(conf)
     local exclude = ignoreList(conf, "--exclude")
-    local args = string.format(" --timeout=30 -v -a -z --no-o --no-g -r %s", exclude)
+    local args = string.format(" -avz -e ssh --delete --executability %s", exclude)
     return args
 end
 
@@ -103,19 +103,20 @@ local function DeployDownload(conf, sourcePath, destinationPath)
 end
 
 function utils.exec(command)
-    utils.createFloatingWindow()
-    vim.fn.jobstart(command, {
-        stdout_buffered = true,
-        on_stdout = function(_, data)
-            table.insert(data, 1, command)
-            vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, data)
-            output = data
-        end,
-        on_exit = function()
-            vim.cmd.sleep(1)
-            vim.api.nvim_win_close(win, true)
-        end
-    })
+    vim.cmd("! " .. command)
+    --utils.createFloatingWindow()
+    --vim.fn.jobstart(command, {
+    --stdout_buffered = true,
+    --on_stdout = function(_, data)
+    --table.insert(data, 1, command)
+    --vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, data)
+    --output = data
+    --end,
+    --on_exit = function()
+    --vim.cmd.sleep(1)
+    --vim.api.nvim_win_close(win, true)
+    --end
+    --})
 end
 
 function utils.createConfig(ConfigFilePath)
@@ -167,16 +168,23 @@ function utils.createFloatingWindow()
         row = 20,
         anchor = 'NW',
         border = { "╔", "═", "╗", "║", "╝", "═", "╚", "║" },
+        focusable = false,
         noautocmd = true
     }
 
     win = vim.api.nvim_open_win(bufnr, true, opts)
 end
 
-function utils.DeployByProtocolToRemote(path)
+function utils.DeployByProtocolToRemote(path, remotePath)
     local conf = utils.GetUsedConf()
     if conf ~= nil then
-        local destinationPath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, path)
+        local rPath = path
+
+        if remotePath  ~= nil then
+            rPath = remotePath
+        end
+
+        local destinationPath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, rPath)
         DeployDownload(conf, path, destinationPath)
     end
 end
