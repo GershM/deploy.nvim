@@ -1,13 +1,15 @@
-local utils = {}
+local actions      = require 'telescope.actions'
+local action_state = require 'telescope.actions.state'
+local finders      = require 'telescope.finders'
+local pickers      = require 'telescope.pickers'
+local previewers   = require 'telescope.previewers'
 
-utils.output = nil
-utils.bufnr = nil
+local utils        = {}
 
-local win = nil
-local width = 120
-local height = 10
+utils.output       = nil
+utils.bufnr        = nil
 
-local function ParseConfiguration()
+local function readUploadConfig()
     local f = io.open(ConfigFilePath, "r")
     if f ~= nil
     then
@@ -20,11 +22,70 @@ local function ParseConfiguration()
             return conf
         end
     end
+end
 
+local function picker(func, opts)
+    opts = opts or {}
+
+    local conf = readUploadConfig()
+    if conf == nil then
+        print("Empty Configuration")
+        return
+    end
+
+    local count = 0
+    local results = {}
+    for _, v in ipairs(conf) do
+        table.insert(results, v)
+        count = count + 1
+    end
+
+    if count == 1 then
+        func(results[1])
+        -- print(vim.inspect(results[1].name))
+        return
+    end
+
+
+    pickers.new(opts, {
+        prompt_title    = 'Deployment Configurations',
+        finder          = finders.new_table {
+            results = results,
+            entry_maker = function(entry)
+                local config = ""
+                if entry.isDefault then
+                    config = " (Default)"
+                end
+                if entry.uploadOnSave then
+                    config = config .. " (Auto Upload)"
+                end
+
+                return {
+                    value = entry,
+                    display = entry.name .. ": " .. entry.username .. "@" .. entry.ipAddress .. " " .. config,
+                    ordinal = entry.name .. ": " .. entry.username .. "@" .. entry.ipAddress .. " " .. config,
+                    preview_command = function(entry, bufnr)
+                        local output = vim.split(vim.inspect(entry.value), '\n')
+                        vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, output)
+                    end
+                }
+            end,
+        },
+        attach_mappings = function(prompt_bufnr)
+            actions.select_default:replace(function()
+                local selection = action_state.get_selected_entry()
+                actions.close(prompt_bufnr)
+                func(selection.value)
+                -- print(vim.inspect(selection))
+            end)
+            return true
+        end,
+        previewer       = previewers.display_content.new(opts)
+    }):find()
 end
 
 function utils.GetUsedConf()
-    local conf = ParseConfiguration()
+    local conf = readUploadConfig()
     if conf ~= nil
     then
         for _, value in ipairs(conf) do
@@ -85,18 +146,17 @@ local function ignoreList(conf, type)
     return exclude
 end
 
-local function GetMethodARGS(conf)
+local function getMethodARGS(conf)
     local exclude = ignoreList(conf, "--exclude")
     local args = string.format(" -avz -e ssh --delete --executability %s", exclude)
     return args
 end
 
-local function DeployDownload(conf, sourcePath, destinationPath)
+local function deployDownload(conf, sourcePath, destinationPath)
     utils.toggle_upload_on_save(conf.uploadOnSave)
     if sourcePath ~= nil and destinationPath ~= nil then
         local method = "rsync"
-        local args = GetMethodARGS(conf)
-        --local command = "ls -l"
+        local args = getMethodARGS(conf)
         local command = string.format("%s %s %s %s", method, args, sourcePath, destinationPath)
         utils.exec(command)
     end
@@ -104,19 +164,6 @@ end
 
 function utils.exec(command)
     vim.cmd("! " .. command)
-    --utils.createFloatingWindow()
-    --vim.fn.jobstart(command, {
-    --stdout_buffered = true,
-    --on_stdout = function(_, data)
-    --table.insert(data, 1, command)
-    --vim.api.nvim_buf_set_lines(bufnr, 0, 0, false, data)
-    --output = data
-    --end,
-    --on_exit = function()
-    --vim.cmd.sleep(1)
-    --vim.api.nvim_win_close(win, true)
-    --end
-    --})
 end
 
 function utils.createConfig(ConfigFilePath)
@@ -155,46 +202,27 @@ function utils.createConfig(ConfigFilePath)
     end
 end
 
-function utils.createFloatingWindow()
-    if bufnr == nil then
-        bufnr = vim.api.nvim_create_buf(false, true)
-    end
-
-    local opts = {
-        relative = 'win',
-        width = width,
-        height = height,
-        col = 20,
-        row = 20,
-        anchor = 'NW',
-        border = { "╔", "═", "╗", "║", "╝", "═", "╚", "║" },
-        focusable = false,
-        noautocmd = true
-    }
-
-    win = vim.api.nvim_open_win(bufnr, true, opts)
-end
-
 function utils.DeployByProtocolToRemote(path, remotePath)
-    local conf = utils.GetUsedConf()
-    if conf ~= nil then
+    local func = function(conf)
         local rPath = path
 
-        if remotePath  ~= nil then
+        if remotePath ~= nil then
             rPath = remotePath
         end
 
-        local destinationPath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, rPath)
-        DeployDownload(conf, path, destinationPath)
+        local destinationPath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath,
+            rPath)
+        deployDownload(conf, path, destinationPath)
     end
+    picker(func)
 end
 
 function utils.DownloadByProtocolFromRemote(path)
-    local conf = utils.GetUsedConf()
-    if conf ~= nil then
+    local func = function(conf)
         local sourcePath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, path)
-        DeployDownload(conf, sourcePath, path)
+        deployDownload(conf, sourcePath, path)
     end
+    picker(func)
 end
 
 return utils

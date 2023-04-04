@@ -16,8 +16,11 @@ function M.DownloadFile()
 end
 
 function M.SyncRemoteProject()
-    local path = "./"
-    utils.DeployByProtocolToRemote(path, "")
+    utils.DeployByProtocolToRemote(WorkingDirPath, "")
+end
+
+function M.SyncLocalProject()
+    utils.DownloadByProtocolFromRemote(WorkingDirPath)
 end
 
 function M.CreateConfiguration()
@@ -33,13 +36,6 @@ function M.EditConfiguration()
     end
 end
 
-function M.resault()
-    if utils.output ~= nil then
-        utils.createFloatingWindow()
-        vim.api.nvim_buf_set_lines(utils.bufnr, 0, -1, false, utils.output)
-    end
-end
-
 function M.ExecuteFile()
     local path = vim.fn.expand('%:p:.')
     local conf = utils.GetUsedConf()
@@ -49,6 +45,8 @@ function M.ExecuteFile()
         utils.exec(command)
     end
 end
+
+-- TODO: Add Auto Upload Toggle Functionality
 
 M.setup = function(config)
     if config == nil then
@@ -63,14 +61,13 @@ M.setup = function(config)
         utils.toggle_upload_on_save(config.uploadOnSave)
     end
 
-    vim.api.nvim_create_user_command("DeploymentResault", function() M.resault() end, {})
     vim.api.nvim_create_user_command("CreateDeploymentConfig", function() M.CreateConfiguration() end, {})
     vim.api.nvim_create_user_command("EditConfiguration", function() M.EditConfiguration() end, {})
     vim.api.nvim_create_user_command("DownloadFile", function() M.DownloadFile() end, {})
     vim.api.nvim_create_user_command("UploadFile", function() M.UploadFile() end, {})
     vim.api.nvim_create_user_command("SyncRemoteProject", function() M.SyncRemoteProject() end, {})
+    vim.api.nvim_create_user_command("SyncLocalProject", function() M.SyncLocalProject() end, {})
     vim.api.nvim_create_user_command("ExecuteRemoteFile", function() M.ExecuteFile() end, {})
-
 end
 
 return M;
