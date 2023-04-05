@@ -97,19 +97,19 @@ function utils.GetUsedConf()
     end
 end
 
-local function enable_on_save()
-    vim.api.nvim_create_augroup("upload_on_save", {})
+local function enableAutoUpload()
+    vim.api.nvim_create_augroup("autoUpload", {})
     vim.api.nvim_create_autocmd("BufWritePost", {
-        group = "upload_on_save",
+        group = "autoUpload",
         pattern = '*',
         callback = function()
             local path = vim.fn.expand('%:p:.')
-            utils.DeployByProtocolToRemote(path)
+            utils.DeployToRemote(path, true, true)
         end,
     })
 end
 
-local function clear_augroup(name)
+local function clearAutoGroup(name)
     vim.schedule(function()
         pcall(function()
             vim.api.nvim_clear_autocmds { group = name }
@@ -117,21 +117,21 @@ local function clear_augroup(name)
     end)
 end
 
-local function disable_on_save()
-    clear_augroup("upload_on_save")
+local function disableAutoUpload()
+    clearAutoGroup("autoUpload")
 end
 
-function utils.toggle_upload_on_save(enable)
+function utils.autoUpload(enable)
     local exists, autocmds = pcall(vim.api.nvim_get_autocmds, {
-        group = "upload_on_save",
+        group = "autoUpload",
         event = "BufWritePre",
     })
     if enable then
         if not exists or #autocmds == 0 then
-            enable_on_save()
+            enableAutoUpload()
         end
     else
-        disable_on_save()
+        disableAutoUpload()
     end
 end
 
@@ -152,8 +152,8 @@ local function getMethodARGS(conf)
     return args
 end
 
-local function deployDownload(conf, sourcePath, destinationPath)
-    utils.toggle_upload_on_save(conf.uploadOnSave)
+local function deployment(conf, sourcePath, destinationPath)
+    utils.autoUpload(conf.uploadOnSave)
     if sourcePath ~= nil and destinationPath ~= nil then
         local method = "rsync"
         local args = getMethodARGS(conf)
@@ -202,27 +202,59 @@ function utils.createConfig(ConfigFilePath)
     end
 end
 
-function utils.DeployByProtocolToRemote(path, remotePath)
+local function ignoreRootPaths(path)
+    return path:find("^"..WorkingDirPath) == nil
+end
+
+local function deploymentValidation(conf, path)
+    if conf == nil then
+        return true
+    end
+
+    for key, value in ipairs(conf.ignore) do
+        if path:find("^" .. value) ~= nil then
+            print("Path '" .. path .. "' ignored")
+            return true
+        end
+    end
+
+    return false
+end
+
+function utils.DeployToRemote(relativePath, fullPath, remotePath, default)
     local func = function(conf)
-        local rPath = path
+        if deploymentValidation(conf, relativePath) == true then
+            return
+        end
+
+        local rPath = relativePath
 
         if remotePath ~= nil then
             rPath = remotePath
         end
 
-        local destinationPath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath,
-            rPath)
-        deployDownload(conf, path, destinationPath)
+        local destinationPath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, rPath)
+        deployment(conf, relativePath, destinationPath)
     end
-    picker(func)
+    if ignoreRootPaths(fullPath) == true then
+        return
+    end
+    picker(func, default)
 end
 
-function utils.DownloadByProtocolFromRemote(path)
+function utils.DownloadFromRemote(relativePath, fullPath, default)
     local func = function(conf)
-        local sourcePath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, path)
-        deployDownload(conf, sourcePath, path)
+        if deploymentValidation(conf, relativePath) == true then
+            return
+        end
+        local sourcePath = string.format("%s@%s:%s/%s", conf.username, conf.ipAddress, conf.remoteRootPath, relativePath)
+        deployment(conf, sourcePath, relativePath)
     end
-    picker(func)
+
+    if ignoreRootPaths(fullPath) == true then
+        return
+    end
+    picker(func, default)
 end
 
 return utils

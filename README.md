@@ -11,7 +11,7 @@
 ## Installation
 - for Packer:
 ```lua
-use { 'GershM/deploy.nvim', setup = require("deploy").setup() }
+use { 'GershM/deploy.nvim',requires = "nvim-telescope/telescope.nvim" , setup = require("deploy").setup() }
 ```
 - Make sure rsync is installed.
 

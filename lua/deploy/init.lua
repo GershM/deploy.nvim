@@ -6,21 +6,24 @@ ConfigFileName = "deploy.json"
 ConfigFilePath = string.format("%s/%s", WorkingDirPath, ConfigFileName)
 
 function M.UploadFile()
-    local path = vim.fn.expand('%:p:.')
-    utils.DeployByProtocolToRemote(path)
+    local relativePath = vim.fn.expand('%:p:.')
+    local fullPath = vim.fn.expand('%:p')
+    utils.DeployToRemote(relativePath, fullPath)
 end
 
 function M.DownloadFile()
     local path = vim.fn.expand('%:p:.')
-    utils.DownloadByProtocolFromRemote(path)
+    local fullPath = vim.fn.expand('%:p')
+    utils.DownloadFromRemote(path, fullPath)
 end
 
-function M.SyncRemoteProject()
-    utils.DeployByProtocolToRemote(WorkingDirPath, "")
+function M.SyncRemote()
+    utils.DeployToRemote(WorkingDirPath, WorkingDirPath, "")
 end
 
-function M.SyncLocalProject()
-    utils.DownloadByProtocolFromRemote(WorkingDirPath)
+function M.SyncLocal()
+    local fullPath = vim.fn.expand('%:p')
+    utils.DownloadFromRemote(WorkingDirPath, fullPath)
 end
 
 function M.CreateConfiguration()
@@ -58,16 +61,16 @@ M.setup = function(config)
             ConfigFileName = config.filename
         end
 
-        utils.toggle_upload_on_save(config.uploadOnSave)
+        utils.autoUpload(config.uploadOnSave)
     end
 
     vim.api.nvim_create_user_command("CreateDeploymentConfig", function() M.CreateConfiguration() end, {})
     vim.api.nvim_create_user_command("EditConfiguration", function() M.EditConfiguration() end, {})
     vim.api.nvim_create_user_command("DownloadFile", function() M.DownloadFile() end, {})
     vim.api.nvim_create_user_command("UploadFile", function() M.UploadFile() end, {})
-    vim.api.nvim_create_user_command("SyncRemoteProject", function() M.SyncRemoteProject() end, {})
-    vim.api.nvim_create_user_command("SyncLocalProject", function() M.SyncLocalProject() end, {})
-    vim.api.nvim_create_user_command("ExecuteRemoteFile", function() M.ExecuteFile() end, {})
+    vim.api.nvim_create_user_command("SyncRemote", function() M.SyncRemote() end, {})
+    vim.api.nvim_create_user_command("SyncLocal", function() M.SyncLocal() end, {})
+    vim.api.nvim_create_user_command("ExecuteRemote", function() M.ExecuteFile() end, {})
 end
 
 return M;
