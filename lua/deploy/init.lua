@@ -18,12 +18,12 @@ function M.DownloadFile()
 end
 
 function M.SyncRemote()
-    utils.DeployToRemote(WorkingDirPath, WorkingDirPath, "")
+    utils.DeployToRemote(WorkingDirPath .. "/", WorkingDirPath, "")
 end
 
 function M.SyncLocal()
     local fullPath = vim.fn.expand('%:p')
-    utils.DownloadFromRemote(WorkingDirPath, fullPath)
+    utils.DownloadFromRemote(WorkingDirPath .. "/", fullPath)
 end
 
 function M.CreateConfiguration()
