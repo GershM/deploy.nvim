@@ -5,25 +5,27 @@ WorkingDirPath = vim.fn.getcwd()
 ConfigFileName = "deploy.json"
 ConfigFilePath = string.format("%s/%s", WorkingDirPath, ConfigFileName)
 
-function M.UploadFile()
+function M.UploadFile(forceTelescope)
     local relativePath = vim.fn.expand('%:p:.')
     local fullPath = vim.fn.expand('%:p')
-    utils.DeployToRemote(relativePath, fullPath)
+
+    utils.DeployToRemote(relativePath, fullPath, "", forceTelescope)
 end
 
-function M.DownloadFile()
+function M.DownloadFile(forceTelescope)
     local path = vim.fn.expand('%:p:.')
     local fullPath = vim.fn.expand('%:p')
-    utils.DownloadFromRemote(path, fullPath)
+
+    utils.DownloadFromRemote(path, fullPath, forceTelescope)
 end
 
-function M.SyncRemote()
-    utils.DeployToRemote(WorkingDirPath .. "/", WorkingDirPath, "")
+function M.SyncRemote(forceTelescope)
+    utils.DeployToRemote(WorkingDirPath .. "/", WorkingDirPath, "", forceTelescope)
 end
 
-function M.SyncLocal()
+function M.SyncLocal(forceTelescope)
     local fullPath = vim.fn.expand('%:p')
-    utils.DownloadFromRemote(WorkingDirPath .. "/", fullPath)
+    utils.DownloadFromRemote(WorkingDirPath .. "/", fullPath, forceTelescope)
 end
 
 function M.CreateConfiguration()
@@ -39,38 +41,64 @@ function M.EditConfiguration()
     end
 end
 
-function M.ExecuteFile()
+function M.ExecuteFile(forceTelescope)
     local path = vim.fn.expand('%:p:.')
-    local conf = utils.GetUsedConf()
-    if conf ~= nil then
-        local command = string.format("ssh %s@%s \"%s %s/%s\"", conf.username, conf.ipAddress, conf.binary,
+    local func = function(conf)
+        local command = string.format("ssh %s@%s \"%s %s/%s\"", conf.username, conf.host, conf.binary,
             conf.remoteRootPath, path)
         utils.exec(command)
+    end
+    utils.picker(func, forceTelescope)
+end
+
+function M.SSHConnection(forceTelescope)
+    utils.SSHConnection(forceTelescope)
+end
+
+function Deployment(opts)
+    local args = opts.args or nil
+    if args == nil then
+        return
+    end
+
+
+    local s = string.lower(args)
+    local cmd = {}
+    for substring in s:gmatch("%S+") do
+        table.insert(cmd, substring)
+    end
+
+    local forceTelescope = false
+    if cmd[2] == "force" then
+        forceTelescope = true
+    end
+
+    if cmd[1] == "upload" then
+        M.UploadFile(forceTelescope)
+    elseif cmd[1] == "download" then
+        M.DownloadFile(forceTelescope)
+    elseif cmd[1] == "create" then
+        M.CreateConfiguration()
+    elseif cmd[1] == "edit" then
+        M.EditConfiguration()
+    elseif cmd[1] == "remotesync" then
+        M.SyncRemote(forceTelescope)
+    elseif cmd[1] == "localsync" then
+        M.SyncLocal(forceTelescope)
+    elseif cmd[1] == "exec" then
+        M.ExecuteFile(forceTelescope)
+    elseif cmd[1] == "connect" then
+        M.SSHConnection(forceTelescope)
+    elseif cmd[1] == "remoteedit" then
+        --   vim scp://user@myserver[:port]//path/to/file.txt
+        -- M.SSHConnection(forceTelescope)
     end
 end
 
 -- TODO: Add Auto Upload Toggle Functionality
-
 M.setup = function(config)
-    if config == nil then
-        config = utils.GetUsedConf()
-    end
-
-    if config ~= nil then
-        if config.filename ~= nil then
-            ConfigFileName = config.filename
-        end
-
-        utils.autoUpload(config.uploadOnSave)
-    end
-
-    vim.api.nvim_create_user_command("CreateDeploymentConfig", function() M.CreateConfiguration() end, {})
-    vim.api.nvim_create_user_command("EditConfiguration", function() M.EditConfiguration() end, {})
-    vim.api.nvim_create_user_command("DownloadFile", function() M.DownloadFile() end, {})
-    vim.api.nvim_create_user_command("UploadFile", function() M.UploadFile() end, {})
-    vim.api.nvim_create_user_command("SyncRemote", function() M.SyncRemote() end, {})
-    vim.api.nvim_create_user_command("SyncLocal", function() M.SyncLocal() end, {})
-    vim.api.nvim_create_user_command("ExecuteRemote", function() M.ExecuteFile() end, {})
+    utils.autoDeploy(M.UploadFile)
+    vim.api.nvim_create_user_command("Deploy", Deployment, { nargs = '?' })
 end
 
 return M;

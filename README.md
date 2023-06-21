@@ -11,22 +11,23 @@
 ## Installation
 - for Packer:
 ```lua
-use { 'GershM/deploy.nvim',requires = "nvim-telescope/telescope.nvim" , setup = require("deploy").setup() }
+use { 'GershM/deploy.nvim', requires = "nvim-telescope/telescope.nvim", setup = require("deploy").setup() }
 ```
 - Make sure rsync is installed.
 
 ## Basic usage
-- Create 'deploy.json' file at the project's root folder or use the ``CreateDeploymentConfig`` command.
-- Deployment config file(deploy.json) example:
+- Create 'deploy.json' file at the project's root folder or use the ``Deploy Create`` command.
+- Deployment configuration file(deploy.json) example:
 ```json
 [
     {
        "name": "Connection Name",
-       "ipAddress": "Host/IP Address",
+       "host": "Host/IP Address",
        "username": "Login User",
        "password": "User's password",
        "remoteRootPath": "",
        "isDefault": true,
+       "autoUpload": true,
        "binary": "",
        "ignore": [
             ".git",
@@ -41,10 +42,21 @@ use { 'GershM/deploy.nvim',requires = "nvim-telescope/telescope.nvim" , setup = 
 ```
 
 ## Commands
-- ``CreateDeploymentConfig``: Creating basic configuration.
-- ``EditConfiguration``: Open the configuration file.
-- ``DownloadFile``: Download File from remote server.
-- ``UploadFile``: Upload File to a remote server.
-- ``SyncRemoteProject``: Uploading the project to remote server.
-- ``ExecuteRemoteFile``: Allow to execute files in Remote server useing ssh (the binary can be configured in the configuration file)
+- Configuration:
+    - ``Deploy Create``: Creating basic configuration.
+    - ``Deploy Edit``: Open the configuration file.
 
+- Deployment:
+    - ``Deploy Download``: Download File from remote server.
+    - ``Deploy Upload``: Upload File to a remote server.
+    - ``Deploy RemoteSync``: Uploading the project to remote server.
+    - ``Deploy LocalSync``: Allow to execute files in Remote server using ssh (the binary can be configured in the configuration file)
+    - ``Deploy Exec``: Allow to execute files in Remote server using ssh (the binary can be configured in the configuration file)
+    - ``Deploy Connect``: Allow to execute files in Remote server using ssh (the binary can be configured in the configuration file)
+
+## Todo 
+- Use of the password Parameter 
+- Allow remote editing 
+- Commands Auto Complete
+- Plugin documentation
+- Update README file 
