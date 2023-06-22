@@ -135,8 +135,8 @@ end
 
 -- INFO: Executing the commands
 function utils.exec(command)
-    print(command)
-    -- vim.cmd("belowright split |terminal " .. command)
+    -- print(command)
+    vim.cmd("belowright split |terminal " .. command)
 end
 
 -- INFO: Creating new configuration File
@@ -243,6 +243,10 @@ function utils.autoDeploy(func)
         group = group,
         callback = function()
             local conf = readUploadConfig()
+            if conf == nil then
+                return
+            end
+
             for _, v in ipairs(conf) do
                 if v.autoUpload and v.isDefault then
                     func(false)
