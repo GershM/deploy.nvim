@@ -1,104 +1,106 @@
-local utils = require("deploy.utils")
 local M = {}
 
-WorkingDirPath = vim.fn.getcwd()
-ConfigFileName = "deploy.json"
-ConfigFilePath = string.format("%s/%s", WorkingDirPath, ConfigFileName)
+-- INFO: Load modules
+M.config = require("deploy.config")
+M.deploy = require("deploy.deploy")
+M.utils = require("deploy.utils")
 
-function M.UploadFile(forceTelescope)
-    local relativePath = vim.fn.expand('%:p:.')
-    local fullPath = vim.fn.expand('%:p')
+-- INFO: Subcommand dispatcher
+local function dispatch_subcommand(args)
+	local subcommands = {
+		upload = function()
+			if args.fargs[2] == "all" then
+				M.deploy.files(nil, true, true)
+			else
+				-- INFO: Optional file argument
+				M.deploy.files(args.fargs[2], true, false)
+			end
+		end,
+		download = function()
+			if args.fargs[2] == "all" then
+				M.deploy.files(nil, false, true)
+			else
+				-- INFO: Optional file argument
+				M.deploy.files(args.fargs[2], false, false)
+			end
+		end,
+		config = function()
+			local config_action = args.fargs[2]
+			if config_action == "init" then
+				M.config.init_config()
+			elseif config_action == "add" then
+				require("deploy.add_connection").add_connection_popup()
+			elseif config_action == "edit" then
+				M.config.edit_config()
+			else
+				print("Invalid config subcommand. Use 'init', 'add', or 'edit'.")
+			end
+		end,
+		select = function()
+			require("deploy.telescope").select_server()
+		end,
+		auto_upload_toggle = function()
+			M.utils.toggle_auto_upload()
+		end,
+	}
 
-    utils.DeployToRemote(relativePath, fullPath, "", forceTelescope)
+	local subcommand = args.fargs[1]
+	if subcommands[subcommand] then
+		subcommands[subcommand]()
+	else
+		print("Invalid subcommand. Use 'upload', 'download', 'config', or 'select'.")
+	end
 end
 
-function M.DownloadFile(forceTelescope)
-    local path = vim.fn.expand('%:p:.')
-    local fullPath = vim.fn.expand('%:p')
+-- Command completion function
+function Deploy_complete(arglead, _, _)
+	local cfg = M.config.load_config() or {}
+	local servers = cfg.servers or {}
 
-    utils.DownloadFromRemote(path, fullPath, forceTelescope)
+	-- INFO: Static subcommands
+	local static_completions = {
+		"upload",
+		"upload all",
+		"download",
+		"download all",
+		"config init",
+		"config add",
+		"config edit",
+		"select",
+		"auto_upload_toggle",
+	}
+
+	-- INFO: Dynamic server name completions
+	local server_names = vim.tbl_map(function(server)
+		return server.name
+	end, servers)
+
+	-- INFO: Combine static and dynamic completions
+	local all_completions = vim.fn.extend(static_completions, server_names)
+	return vim.tbl_filter(function(item)
+		if not item then
+			return false
+		end
+
+		if not arglead then
+			return true
+		end
+
+		return string.sub(item, 1, string.len(arglead)) == arglead
+	end, all_completions)
 end
 
-function M.SyncRemote(forceTelescope)
-    utils.DeployToRemote(WorkingDirPath .. "/", WorkingDirPath, "", forceTelescope)
+-- INFO: Register the top-level Deploy command
+function M.setup()
+	vim.api.nvim_create_user_command("Deploy", function(args)
+		dispatch_subcommand(args)
+	end, { nargs = "*", complete = "customlist,v:lua.Deploy_complete" })
+
+	-- INFO: Initialize auto-upload
+	M.utils.autoDeploy(function(server)
+		print("Auto-uploading to server: " .. server.name)
+		M.deploy.files(nil, true, false)
+	end)
 end
 
-function M.SyncLocal(forceTelescope)
-    local fullPath = vim.fn.expand('%:p')
-    utils.DownloadFromRemote(WorkingDirPath .. "/", fullPath, forceTelescope)
-end
-
-function M.CreateConfiguration()
-    utils.createConfig(ConfigFilePath)
-end
-
-function M.EditConfiguration()
-    local f = io.open(ConfigFilePath, "r")
-    if f ~= nil then
-        vim.cmd(string.format("e %s", ConfigFilePath))
-    else
-        print("The Configuration File doesn't exists")
-    end
-end
-
-function M.ExecuteFile(forceTelescope)
-    local path = vim.fn.expand('%:p:.')
-    local func = function(conf)
-        local command = string.format("ssh %s@%s \"%s %s/%s\"", conf.username, conf.host, conf.binary,
-            conf.remoteRootPath, path)
-        utils.exec(command)
-    end
-    utils.picker(func, forceTelescope)
-end
-
-function M.SSHConnection(forceTelescope)
-    utils.SSHConnection(forceTelescope)
-end
-
-function Deployment(opts)
-    local args = opts.args or nil
-    if args == nil then
-        return
-    end
-
-
-    local s = string.lower(args)
-    local cmd = {}
-    for substring in s:gmatch("%S+") do
-        table.insert(cmd, substring)
-    end
-
-    local forceTelescope = false
-    if cmd[2] == "force" then
-        forceTelescope = true
-    end
-
-    if cmd[1] == "upload" then
-        M.UploadFile(forceTelescope)
-    elseif cmd[1] == "download" then
-        M.DownloadFile(forceTelescope)
-    elseif cmd[1] == "create" then
-        M.CreateConfiguration()
-    elseif cmd[1] == "edit" then
-        M.EditConfiguration()
-    elseif cmd[1] == "remotesync" then
-        M.SyncRemote(forceTelescope)
-    elseif cmd[1] == "localsync" then
-        M.SyncLocal(forceTelescope)
-    elseif cmd[1] == "exec" then
-        M.ExecuteFile(forceTelescope)
-    elseif cmd[1] == "connect" then
-        M.SSHConnection(forceTelescope)
-    elseif cmd[1] == "remoteedit" then
-        --   vim scp://user@myserver[:port]//path/to/file.txt
-        -- M.SSHConnection(forceTelescope)
-    end
-end
-
--- TODO: Add Auto Upload Toggle Functionality
-M.setup = function(config)
-    utils.autoDeploy(M.UploadFile)
-    vim.api.nvim_create_user_command("Deploy", Deployment, { nargs = '?' })
-end
-
-return M;
+return M

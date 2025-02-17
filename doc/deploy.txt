@@ -1,0 +1,18 @@
+*deploy.nvim*
+
+deploy.nvim is a Neovim plugin for managing deployments.
+
+Commands:
+  :Deploy upload              Upload current file to the server.
+  :Deploy upload [file]       Upload files to the server.
+  :Deploy upload all          Upload all the files in the project's root directory to the server.
+  :Deploy download            Download the current file from the server.
+  :Deploy download [file]     Download files from the server.
+  :Deploy download all        Download all files to the projct's root directory from the server.
+  :Deploy config init         Initialize the configuration file.
+  :Deploy config add          Add a new server connection interactively.
+  :Deploy config edit         Edit the configuration file.
+  :Deploy select              Select a server using Telescope.
+  :Deploy auto_upload_toggle  Toggle auto upload on save.
+
+For more details, see |deploy-configuration|.
